@@ -20,7 +20,6 @@ const (
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypePooled          WrapperType = "pooled"
 	WrapperTypeShamir          WrapperType = "shamir"
-	WrapperTypeStackitKms      WrapperType = "stackitkms"
 	WrapperTypeTencentCloudKms WrapperType = "tencentcloudkms"
 	WrapperTypeTransit         WrapperType = "transit"
 	WrapperTypeTest            WrapperType = "test-auto"

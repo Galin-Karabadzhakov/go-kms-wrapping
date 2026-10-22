@@ -14,7 +14,7 @@ import (
 	"github.com/stackitcloud/stackit-sdk-go/services/kms/v1api"
 )
 
-const Type = wrapping.WrapperTypeStackitKms
+const Type wrapping.WrapperType = "stackitkms"
 
 const (
 	envKMSProjectID  = "STACKITKMS_PROJECT_ID"
