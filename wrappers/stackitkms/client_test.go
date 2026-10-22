@@ -66,3 +66,26 @@ func TestNewSdkClientDisallowEnvVars(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, client)
 }
+
+func TestNewSdkClientWorkloadIdentityValidation(t *testing.T) {
+	base := clientConfig{
+		projectId:                  testProjectId,
+		region:                     testRegion,
+		keyRingId:                  testKeyRingId,
+		workloadIdentityFederation: true,
+		disallowEnvVars:            true,
+	}
+
+	_, err := newSdkClient(base)
+	require.ErrorContains(t, err, "service_account_email")
+
+	cc := base
+	cc.serviceAccountEmail = "vault@sa.stackit.cloud"
+	_, err = newSdkClient(cc)
+	require.ErrorContains(t, err, "federated_token_file")
+
+	cc.federatedTokenFile = "/var/run/secrets/stackit.cloud/serviceaccount/token"
+	cc.token = "static-token"
+	_, err = newSdkClient(cc)
+	require.ErrorContains(t, err, "cannot be combined")
+}

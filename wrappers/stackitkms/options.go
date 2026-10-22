@@ -3,9 +3,7 @@
 
 package stackitkms
 
-import (
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
-)
+import wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 
 func getDefaultOptions() options {
 	return options{}
@@ -45,6 +43,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 			opts.withPrivateKeyPath = v
 		case "token":
 			opts.withToken = v
+		case "workload_identity_federation":
+			opts.withWorkloadIdentityFederation = v
+		case "service_account_email":
+			opts.withServiceAccountEmail = v
+		case "federated_token_file":
+			opts.withFederatedTokenFile = v
 		}
 	}
 
@@ -61,9 +65,12 @@ type options struct {
 	withKeyVersion string
 	withEndpoint   string
 
-	withServiceAccountKey     string
-	withServiceAccountKeyPath string
-	withPrivateKey            string
-	withPrivateKeyPath        string
-	withToken                 string
+	withServiceAccountKey          string
+	withServiceAccountKeyPath      string
+	withPrivateKey                 string
+	withPrivateKeyPath             string
+	withToken                      string
+	withWorkloadIdentityFederation string
+	withServiceAccountEmail        string
+	withFederatedTokenFile         string
 }

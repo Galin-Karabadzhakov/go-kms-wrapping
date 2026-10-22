@@ -29,11 +29,14 @@ type clientConfig struct {
 	keyRingId string
 	endpoint  string
 
-	serviceAccountKey     string
-	serviceAccountKeyPath string
-	privateKey            string
-	privateKeyPath        string
-	token                 string
+	serviceAccountKey          string
+	serviceAccountKeyPath      string
+	privateKey                 string
+	privateKeyPath             string
+	token                      string
+	workloadIdentityFederation bool
+	serviceAccountEmail        string
+	federatedTokenFile         string
 
 	disallowEnvVars bool
 }
@@ -68,9 +71,27 @@ func newSdkClient(cc clientConfig) (kmsClient, error) {
 	if cc.token != "" {
 		opts = append(opts, config.WithToken(cc.token))
 	}
+	if cc.workloadIdentityFederation {
+		if cc.serviceAccountEmail == "" {
+			return nil, fmt.Errorf("'service_account_email' must be configured for workload identity federation")
+		}
+		if cc.federatedTokenFile == "" {
+			return nil, fmt.Errorf("'federated_token_file' must be configured for workload identity federation")
+		}
+		if cc.serviceAccountKey != "" || cc.serviceAccountKeyPath != "" || cc.privateKey != "" || cc.privateKeyPath != "" || cc.token != "" {
+			return nil, fmt.Errorf("workload identity federation cannot be combined with static credentials or token authentication")
+		}
+		opts = append(opts,
+			config.WithServiceAccountEmail(cc.serviceAccountEmail),
+			config.WithWorkloadIdentityFederationAuth(),
+			config.WithWorkloadIdentityFederationPath(cc.federatedTokenFile),
+		)
+	}
 
 	if cc.disallowEnvVars {
 		switch {
+		case cc.workloadIdentityFederation:
+			// WIF reads only the explicitly configured projected token file.
 		case cc.serviceAccountKeyPath != "" || cc.privateKeyPath != "":
 			return nil, fmt.Errorf("'service_account_key_path' and 'private_key_path' cannot be used when environment access is disallowed")
 		case cc.serviceAccountKey != "":

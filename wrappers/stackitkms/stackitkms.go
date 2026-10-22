@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stackitcloud/stackit-sdk-go/services/kms/v1api"
 )
 
-const Type wrapping.WrapperType = "stackitkms"
+const Type = wrapping.WrapperTypeStackitKms
 
 const (
 	envKMSProjectID  = "STACKITKMS_PROJECT_ID"
@@ -85,6 +85,14 @@ func (w *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	keyVersionRaw := pick(envKMSKeyVersion, opts.withKeyVersion)
 	endpoint := pick(envKMSEndpoint, opts.withEndpoint)
 
+	workloadIdentityFederation := false
+	if opts.withWorkloadIdentityFederation != "" {
+		workloadIdentityFederation, err = strconv.ParseBool(opts.withWorkloadIdentityFederation)
+		if err != nil {
+			return nil, fmt.Errorf("invalid 'workload_identity_federation' %q: must be a boolean", opts.withWorkloadIdentityFederation)
+		}
+	}
+
 	switch {
 	case projectId == "":
 		return nil, fmt.Errorf("'project_id' not found (config or env)")
@@ -110,11 +118,14 @@ func (w *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 		keyRingId: keyRingId,
 		endpoint:  endpoint,
 
-		serviceAccountKey:     opts.withServiceAccountKey,
-		serviceAccountKeyPath: opts.withServiceAccountKeyPath,
-		privateKey:            opts.withPrivateKey,
-		privateKeyPath:        opts.withPrivateKeyPath,
-		token:                 opts.withToken,
+		serviceAccountKey:          opts.withServiceAccountKey,
+		serviceAccountKeyPath:      opts.withServiceAccountKeyPath,
+		privateKey:                 opts.withPrivateKey,
+		privateKeyPath:             opts.withPrivateKeyPath,
+		token:                      opts.withToken,
+		workloadIdentityFederation: workloadIdentityFederation,
+		serviceAccountEmail:        opts.withServiceAccountEmail,
+		federatedTokenFile:         opts.withFederatedTokenFile,
 
 		disallowEnvVars: opts.WithDisallowEnvVars,
 	})
@@ -164,6 +175,9 @@ func (w *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	}
 	if endpoint != "" {
 		wrapConfig.Metadata["endpoint"] = endpoint
+	}
+	if workloadIdentityFederation {
+		wrapConfig.Metadata["workload_identity_federation"] = "true"
 	}
 	return wrapConfig, nil
 }

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stackitcloud/stackit-sdk-go/services/kms/v1api"
 	"github.com/stretchr/testify/require"
 )
@@ -341,6 +341,43 @@ func TestSetConfigMetadata(t *testing.T) {
 		"key_version": "1",
 	}
 	require.Equal(t, want, cfg.Metadata)
+}
+
+func TestSetConfigWorkloadIdentity(t *testing.T) {
+	fake := newFakeKmsClient(
+		v1api.PURPOSE_SYMMETRIC_ENCRYPT_DECRYPT,
+		fakeVersion(1, v1api.VERSIONSTATE_ACTIVE, false),
+	)
+	w := NewWrapper()
+	var gotConfig clientConfig
+	w.newClient = func(cc clientConfig) (kmsClient, error) {
+		gotConfig = cc
+		return fake, nil
+	}
+
+	cfg, err := w.SetConfig(context.Background(),
+		wrapping.WithDisallowEnvVars(true),
+		wrapping.WithConfigMap(testConfigMap(map[string]string{
+			"workload_identity_federation": "true",
+			"service_account_email":        "vault@sa.stackit.cloud",
+			"federated_token_file":         "/var/run/secrets/stackit.cloud/serviceaccount/token",
+		})),
+	)
+	require.NoError(t, err)
+	require.True(t, gotConfig.workloadIdentityFederation)
+	require.Equal(t, "vault@sa.stackit.cloud", gotConfig.serviceAccountEmail)
+	require.Equal(t, "/var/run/secrets/stackit.cloud/serviceaccount/token", gotConfig.federatedTokenFile)
+	require.Equal(t, "true", cfg.Metadata["workload_identity_federation"])
+	require.NotContains(t, cfg.Metadata, "service_account_email")
+	require.NotContains(t, cfg.Metadata, "federated_token_file")
+}
+
+func TestSetConfigRejectsInvalidWorkloadIdentityFlag(t *testing.T) {
+	w := NewWrapper()
+	_, err := w.SetConfig(context.Background(), wrapping.WithConfigMap(testConfigMap(map[string]string{
+		"workload_identity_federation": "sometimes",
+	})))
+	require.ErrorContains(t, err, "must be a boolean")
 }
 
 func TestDecryptRejectsInvalidBlob(t *testing.T) {
